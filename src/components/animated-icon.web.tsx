@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { StyleSheet, View } from "react-native";
 import Animated, { Easing, Keyframe } from "react-native-reanimated";
 
-import classes from "./animated-icon.module.css";
+
 const DURATION = 300;
 
 export function AnimatedSplashOverlay() {
@@ -63,7 +63,7 @@ export function AnimatedIcon() {
       >
         <Image
           style={styles.glow}
-          source={require("@/assets/images/logo-glow.png")}
+        source={require("../../assets/images/umlogo.png")}
         />
       </Animated.View>
 
@@ -71,7 +71,7 @@ export function AnimatedIcon() {
         style={styles.background}
         entering={keyframe.duration(DURATION)}
       >
-        <div className={classes.expoLogoBackground} />
+       <View style={styles.logoBackground} />
       </Animated.View>
 
       <Animated.View
@@ -120,4 +120,10 @@ const styles = StyleSheet.create({
     height: 128,
     position: "absolute",
   },
+  logoBackground: {
+  width: 128,
+  height: 128,
+  borderRadius: 24,
+  backgroundColor: "#4630eb",
+},
 });

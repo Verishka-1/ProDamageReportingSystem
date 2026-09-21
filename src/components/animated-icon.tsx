@@ -36,7 +36,7 @@ export function AnimatedSplashOverlay() {
   const image = (
     <Image
       style={styles.image}
-      source={require("@/assets/images/screen-logo.png")}
+     source={require("../../assets/images/umlogo.png")}
     />
   );
 
@@ -116,7 +116,7 @@ export function AnimatedIcon() {
       >
         <Image
           style={styles.image}
-          source={require("@/assets/images/umlogo.png")}
+          source={require("../../assets/images/umlogo.png")}
         />
       </Animated.View>
     </View>

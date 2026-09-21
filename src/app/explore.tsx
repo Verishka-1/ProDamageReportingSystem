@@ -1,371 +1,328 @@
-import { AnimatedIcon } from "@/components/animated-icon";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { BottomTabInset, MaxContentWidth, Spacing } from "@/constants/theme";
+
+import { useState } from "react";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { useState } from "react";
-import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function ReportScreen() {
-  // GPS location
-  const [location, setLocation] = useState<Location.LocationObject | null>(
-    null,
-  );
+import { notifyReportSubmitted } from "../services/notifications";
 
-  // Selected room
+const campuses = ["UM Visayan (Tagum)"];
+
+const rooms = [
+  "Classroom",
+  "Laboratory",
+  "Library",
+  "Office",
+  "Hallway",
+  "Comfort Room",
+  "Other",
+];
+
+export default function ExploreScreen() {
+  const [campus, setCampus] = useState("UM Visayan (Tagum)");
   const [room, setRoom] = useState("");
+  const [description, setDescription] = useState("");
+  const [locationText, setLocationText] = useState("");
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Selected campus
-  const [campus, setCampus] = useState("");
+  const getCurrentLocation = async () => {
+    try {
+      const { status } =
+        await Location.requestForegroundPermissionsAsync();
 
-  const [photo, setPhoto] = useState<string | null>(null);
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Please allow location access to get your current location."
+        );
+        return;
+      }
 
-  // Location text shown to user
-  const [locationText, setLocationText] = useState("No location detected");
+      const location = await Location.getCurrentPositionAsync({});
 
-  const getLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-
-    if (status !== "granted") {
-      setLocationText("Location permission denied");
-      return;
+      setLocationText(
+        `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`
+      );
+    } catch (error) {
+      console.error("Location error:", error);
+      Alert.alert("Error", "Unable to get your location.");
     }
-
-    const currentLocation = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-
-    // Save actual GPS location
-    setLocation(currentLocation);
-
-    // Show readable location instead of latitude/longitude
-    setLocationText(`${room}, ${campus} Campus, University of Mindanao`);
   };
 
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    try {
+      const permission =
+        await ImagePicker.requestCameraPermissionsAsync();
 
-    if (status !== "granted") {
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Please allow camera access to take a photo."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.7,
+      });
+
+      if (!result.canceled) {
+        setPhotoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      Alert.alert("Error", "Unable to open the camera.");
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!campus || !room || !description.trim()) {
+      Alert.alert(
+        "Missing Information",
+        "Please select a campus and room, and enter a description."
+      );
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+    setSubmitting(true);
 
-    if (!result.canceled) {
-      setPhoto(result.assets[0].uri);
+    try {
+      // This currently demonstrates local notification only.
+      // Add actual report-saving code here when your backend is ready.
+      await notifyReportSubmitted();
+
+      Alert.alert(
+        "Success",
+        "Your report submission was simulated and a local notification was requested."
+      );
+
+      setCampus("");
+      setRoom("");
+      setDescription("");
+      setLocationText("");
+      setPhotoUri(null);
+    } catch (error) {
+      console.error("Submission error:", error);
+      Alert.alert(
+        "Error",
+        "Could not complete the submission notification."
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          {/* LOGO */}
-          <AnimatedIcon />
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>Report Property Damage</Text>
+        <Text style={styles.subtitle}>
+          Report damaged facilities around the campus.
+        </Text>
 
-          {/* TITLE */}
-          <View style={styles.titleContainer}>
-            <ThemedText style={styles.headerText}>UMFixed</ThemedText>
-
-            <ThemedText style={styles.reportText}>Report</ThemedText>
+        <View style={styles.card}>
+          <Text style={styles.label}>Campus</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={campus}
+              onValueChange={setCampus}
+            >
+              <Picker.Item
+                label="Select Campus"
+                value=""
+              />
+              {campuses.map((item) => (
+                <Picker.Item
+                  key={item}
+                  label={item}
+                  value={item}
+                />
+              ))}
+            </Picker>
           </View>
-        </View>
 
-        {/* =========================
-            FACILITY & LOCATION
-        ========================= */}
+          <Text style={styles.label}>Room / Location</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={room}
+              onValueChange={setRoom}
+            >
+              <Picker.Item
+                label="Select Room"
+                value=""
+              />
+              {rooms.map((item) => (
+                <Picker.Item
+                  key={item}
+                  label={item}
+                  value={item}
+                />
+              ))}
+            </Picker>
+          </View>
 
-        <ThemedView style={styles.sectionHeader}>
-          <ThemedText style={styles.sectionTitle}>
-            Facility & Location
-          </ThemedText>
-        </ThemedView>
-
-        {/* =========================
-            SELECT ROOM
-        ========================= */}
-
-        <ThemedText style={styles.label}>Select Room:</ThemedText>
-
-        <ThemedView style={styles.input}>
-          <Picker
-            selectedValue={room}
-            onValueChange={(itemValue) => setRoom(itemValue)}
-            style={styles.picker}
+          <Text style={styles.label}>GPS Location</Text>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={getCurrentLocation}
           >
-            <Picker.Item label="Room 101" value="Room 101" />
-            <Picker.Item label="Room 102" value="Room 102" />
-            <Picker.Item label="Room 103" value="Room 103" />
-            <Picker.Item label="Room 104" value="Room 104" />
-            <Picker.Item label="Room 105" value="Room 105" />
-            <Picker.Item label="Room 106" value="Room 106" />
-            <Picker.Item label="Room 201" value="Room 201" />
-          </Picker>
-        </ThemedView>
-
-        {/* =========================
-            SELECT CAMPUS
-        ========================= */}
-
-        <ThemedText style={styles.label}>Select Campus:</ThemedText>
-
-        <ThemedView style={styles.input}>
-          <Picker
-            selectedValue={campus}
-            onValueChange={(itemValue) => setCampus(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Visayan Campus" value="Visayan" />
-            <Picker.Item label="Mabini Campus" value="Mabini" />
-          </Picker>
-        </ThemedView>
-
-        {/* =========================
-            GPS LOCATION
-        ========================= */}
-
-        <ThemedView style={styles.gpsBox}>
-          <ThemedText style={styles.gpsTitle}>📍 GPS Location</ThemedText>
-
-          <ThemedText style={styles.locationText}>{locationText}</ThemedText>
-
-          {location && (
-            <ThemedText style={styles.validated}>
-              ✓ GPS Location Validated
-            </ThemedText>
-          )}
-        </ThemedView>
-
-        {/* =========================
-            GET LOCATION BUTTON
-        ========================= */}
-
-        <TouchableOpacity style={styles.gpsButton} onPress={getLocation}>
-          <ThemedText style={styles.buttonText}>
-            📍 Get Current Location
-          </ThemedText>
-        </TouchableOpacity>
-
-        <ThemedView style={styles.photoBox}>
-          <ThemedText style={styles.photoTitle}>
-            📷 Report Damaged Property
-          </ThemedText>
-          <ThemedText style={styles.photoDescription}>
-            Take a photo of the damaged school property.
-          </ThemedText>
-
-          {photo && (
-            <Image source={{ uri: photo }} style={styles.photoPreview} />
-          )}
-
-          {/* Camera Button */}
-
-          <TouchableOpacity style={styles.cameraButton} onPress={takePhoto}>
-            <ThemedText style={styles.cameraButtonText}>
-              📷 {photo ? "Retake Photo" : "Take Photo"}
-            </ThemedText>
+            <Text style={styles.secondaryButtonText}>
+              Get Current Location
+            </Text>
           </TouchableOpacity>
-        </ThemedView>
-      </SafeAreaView>
-    </ThemedView>
+
+          {locationText ? (
+            <Text style={styles.locationText}>
+              Coordinates: {locationText}
+            </Text>
+          ) : null}
+
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Describe the property damage..."
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+
+          <Text style={styles.label}>Photo Evidence</Text>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={takePhoto}
+          >
+            <Text style={styles.secondaryButtonText}>
+              Take Photo
+            </Text>
+          </TouchableOpacity>
+
+          {photoUri ? (
+            <Image
+              source={{ uri: photoUri }}
+              style={styles.photo}
+              resizeMode="cover"
+            />
+          ) : null}
+
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              submitting && styles.disabledButton,
+            ]}
+            onPress={handleSubmitReport}
+            disabled={submitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {submitting ? "Submitting..." : "Submit Report"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    flexDirection: "row",
-  },
-
   safeArea: {
     flex: 1,
-    paddingHorizontal: 29,
-    paddingTop: 25,
-    alignItems: "flex-start",
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    backgroundColor: "#f4f6fa",
   },
-
-  /* =========================
-     HEADER
-     ========================= */
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    width: "100%",
-    marginBottom: 15,
-    paddingLeft: 1,
+  container: {
+    padding: 20,
+    paddingBottom: 40,
   },
-
-  titleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: 8,
-    justifyContent: "center",
+  title: {
+    fontSize: 25,
+    fontWeight: "bold",
+    color: "#14213d",
+    marginBottom: 8,
   },
-
-  headerText: {
-    marginLeft: 20,
-    textAlign: "left",
-    color: "maroon",
-    fontSize: 19,
+  subtitle: {
+    fontSize: 14,
+    color: "#667085",
+    marginBottom: 20,
   },
-
-  reportText: {
-    marginLeft: 8,
-    fontSize: 11,
-    color: "#6b7280",
+  card: {
+    backgroundColor: "#ffffff",
+    padding: 18,
+    borderRadius: 16,
+    elevation: 3,
   },
-
-  /* =========================
-     SECTION
-     ========================= */
-
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 14,
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "maroon",
-    marginLeft: 8,
-  },
-
-  /* =========================
-     LABEL
-     ========================= */
-
   label: {
     fontSize: 15,
-    fontWeight: "500",
-    color: "#374151",
-    marginBottom: 6,
+    fontWeight: "600",
+    color: "#263238",
+    marginTop: 14,
+    marginBottom: 8,
   },
-
-  /* =========================
-     PICKER
-     ========================= */
-
-  input: {
-    height: 42,
-    backgroundColor: "#f0f2fb",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-
-  picker: {
-    height: 100,
-    width: "100%",
-  },
-
-  /* =========================
-     GPS
-     ========================= */
-
-  gpsBox: {
-    width: "100%",
-    padding: 16,
+  pickerContainer: {
     borderWidth: 1,
-    borderColor: "#800000",
+    borderColor: "#d0d5dd",
     borderRadius: 10,
-    backgroundColor: "#FFF7F7",
+    overflow: "hidden",
   },
-
-  gpsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#800000",
+  secondaryButton: {
+    backgroundColor: "#e8eef8",
+    padding: 14,
+    borderRadius: 10,
+    alignItems: "center",
   },
-
+  secondaryButtonText: {
+    color: "#173b73",
+    fontWeight: "600",
+  },
   locationText: {
-    marginTop: 10,
-    fontSize: 14,
-    lineHeight: 22,
+    marginTop: 8,
+    color: "#475467",
+    fontSize: 13,
   },
-
-  validated: {
-    marginTop: 10,
-    color: "#15803D",
-    fontWeight: "bold",
-  },
-
-  /* =========================
-     BUTTON
-     ========================= */
-
-  gpsButton: {
-    width: "100%",
-    marginTop: 15,
-    paddingVertical: 15,
-    borderRadius: 8,
-    backgroundColor: "#800000",
-    alignItems: "center",
-  },
-
-  buttonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
-
-  /* =========================
-     CAMERA
-     ========================= */
-
-  photoBox: {
-    width: "100%",
-    marginTop: 10,
-    padding: 16,
+  textInput: {
+    minHeight: 110,
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#d0d5dd",
     borderRadius: 10,
-    backgroundColor: "#FFFFFF",
+    padding: 12,
+    fontSize: 15,
+    color: "#222",
   },
-  photoTitle: {
+  photo: {
+    width: "100%",
+    height: 220,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  submitButton: {
+    backgroundColor: "#173b73",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  submitButtonText: {
+    color: "#ffffff",
     fontSize: 16,
     fontWeight: "bold",
-    color: "#800000",
   },
-  photoDescription: {
-    marginTop: 5,
-    marginBottom: 12,
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  photoPreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  cameraButton: {
-    width: "100%",
-    paddingVertical: 13,
-    borderRadius: 8,
-    backgroundColor: "#800000",
-    alignItems: "center",
-  },
-  cameraButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
-    fontSize: 14,
+  disabledButton: {
+    opacity: 0.6,
   },
 });
