@@ -31,6 +31,28 @@ Notifications.setNotificationHandler({
 
 export default function ReportScreen() {
   // =========================
+  // REQUEST NOTIFICATION PERMISSION
+  // =========================
+
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+
+        if (status === "granted") {
+          console.log("Notification permission granted");
+        } else {
+          console.log("Notification permission denied");
+        }
+      } catch (error) {
+        console.error("Notification permission error:", error);
+      }
+    };
+
+    setupNotifications();
+  }, []);
+
+  // =========================
   // STATE
   // =========================
 
@@ -48,40 +70,6 @@ export default function ReportScreen() {
   const [message, setMessage] = useState("");
 
   // =========================
-  // REQUEST NOTIFICATION PERMISSION
-  // =========================
-
-  useEffect(() => {
-    const requestNotificationPermission = async () => {
-      try {
-        // Android notification channel
-        await Notifications.setNotificationChannelAsync("default", {
-          name: "UMFixed Notifications",
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#800000",
-          sound: "default",
-        });
-
-        const { status: existingStatus } =
-          await Notifications.getPermissionsAsync();
-
-        if (existingStatus !== "granted") {
-          const { status } = await Notifications.requestPermissionsAsync();
-
-          if (status !== "granted") {
-            console.log("Notification permission was denied.");
-          }
-        }
-      } catch (error) {
-        console.error("Notification permission error:", error);
-      }
-    };
-
-    requestNotificationPermission();
-  }, []);
-
-  // =========================
   // SEND LOCAL NOTIFICATION
   // =========================
 
@@ -89,14 +77,21 @@ export default function ReportScreen() {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "🔧 UMFixed",
+          title: "UMFixed",
           body: `Your damage report for ${room}, ${campus} Campus was submitted successfully.`,
           sound: "default",
+          data: {
+            screen: "Report",
+            room: room,
+            campus: campus,
+          },
         },
         trigger: null,
       });
+
+      console.log("Local notification sent successfully");
     } catch (error) {
-      console.error("Notification error:", error);
+      console.error("Local notification error:", error);
     }
   };
 
@@ -190,13 +185,16 @@ export default function ReportScreen() {
       setSubmitting(true);
 
       // Simulate submitting
-      // No API / database is used
+      // Replace this later with your database/API
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Success message
       setMessage("✓ Report submitted successfully!");
 
-      // 🔔 SEND LOCAL NOTIFICATION
+      // =========================
+      // SEND LOCAL NOTIFICATION
+      // =========================
+
       await sendReportNotification();
 
       // Clear form
@@ -273,8 +271,6 @@ export default function ReportScreen() {
               }}
               style={styles.picker}
             >
-              <Picker.Item label="Select Room" value="" />
-
               <Picker.Item label="Room 101" value="Room 101" />
 
               <Picker.Item label="Room 102" value="Room 102" />
@@ -313,8 +309,6 @@ export default function ReportScreen() {
               }}
               style={styles.picker}
             >
-              <Picker.Item label="Select Campus" value="" />
-
               <Picker.Item label="Visayan Campus" value="Visayan" />
 
               <Picker.Item label="Mabini Campus" value="Mabini" />
@@ -405,10 +399,6 @@ export default function ReportScreen() {
             </ThemedText>
           )}
 
-          {/* =========================
-              BOTTOM SPACING
-          ========================= */}
-
           <View style={styles.bottomSpacer} />
         </ScrollView>
       </SafeAreaView>
@@ -442,10 +432,6 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
 
-  // =========================
-  // HEADER
-  // =========================
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -474,10 +460,6 @@ const styles = StyleSheet.create({
     color: "#6b7280",
   },
 
-  // =========================
-  // SECTION
-  // =========================
-
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -492,20 +474,12 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // =========================
-  // LABEL
-  // =========================
-
   label: {
     fontSize: 15,
     fontWeight: "500",
     color: "#374151",
     marginBottom: 6,
   },
-
-  // =========================
-  // PICKER
-  // =========================
 
   input: {
     minHeight: 50,
@@ -521,10 +495,6 @@ const styles = StyleSheet.create({
     height: 55,
     width: "100%",
   },
-
-  // =========================
-  // GPS
-  // =========================
 
   gpsBox: {
     width: "100%",
@@ -553,10 +523,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // =========================
-  // GPS BUTTON
-  // =========================
-
   gpsButton: {
     width: "100%",
     marginTop: 15,
@@ -571,10 +537,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 15,
   },
-
-  // =========================
-  // PHOTO
-  // =========================
 
   photoBox: {
     width: "100%",
@@ -620,10 +582,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // =========================
-  // SUBMIT
-  // =========================
-
   submitButton: {
     width: "100%",
     marginTop: 15,
@@ -643,10 +601,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  // =========================
-  // MESSAGE
-  // =========================
-
   message: {
     width: "100%",
     marginTop: 10,
@@ -662,10 +616,6 @@ const styles = StyleSheet.create({
   errorMessage: {
     color: "#B91C1C",
   },
-
-  // =========================
-  // BOTTOM SPACING
-  // =========================
 
   bottomSpacer: {
     height: 50,
